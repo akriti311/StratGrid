@@ -65,9 +65,12 @@ export function ActionSheet({
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetTrigger asChild>
-        <Button variant="outline">Add action</Button>
+        <Button variant="outline" size="sm" className="gap-1.5">
+          <ArrowLeftRight className="size-3.5" />
+          Add action
+        </Button>
       </SheetTrigger>
-      <SheetContent side="right" className="sm:max-w-md">
+      <SheetContent side="right" className="border-border/80 bg-popover sm:max-w-md">
         <SheetHeader>
           <SheetTitle>Add an action</SheetTitle>
           <SheetDescription>
@@ -80,14 +83,14 @@ export function ActionSheet({
             <button
               key={option.kind}
               type="button"
-              className="flex items-start gap-3 rounded-lg border border-border bg-card p-3 text-left transition-colors hover:bg-muted"
+              className="flex items-start gap-3 rounded-xl border border-border/80 bg-card p-3 text-left transition-all hover:border-amber-500/40 hover:bg-amber-500/5"
               onClick={() => {
                 onSelect(option.kind, option.metadata)
                 onOpenChange?.(false)
               }}
             >
-              <span className="mt-0.5 rounded-md border border-border bg-background p-2">
-                <ArrowLeftRight className="size-4" />
+              <span className="mt-0.5 rounded-lg border border-amber-500/30 bg-amber-500/15 p-2">
+                <ArrowLeftRight className="size-4 text-amber-300" />
               </span>
               <span className="flex flex-col gap-0.5">
                 <span className="text-sm font-medium text-foreground">

@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react'
 import { Link, Navigate, useNavigate } from 'react-router-dom'
 
 import { useAuth } from '@/auth/AuthContext'
+import { AuthLayout } from '@/components/layout/AuthLayout'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -41,23 +42,19 @@ export function SignupPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background px-4">
-      <form
-        onSubmit={handleSubmit}
-        className="w-full max-w-sm space-y-4 rounded-xl border border-border bg-card p-6 shadow-sm"
-      >
-        <div>
-          <h1 className="text-lg font-semibold text-foreground">Create a StratGrid account</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Password must be at least 8 characters.
-          </p>
-        </div>
+    <AuthLayout
+      title="Create your account"
+      description="Start building paper trading workflows in minutes."
+    >
+      <form onSubmit={handleSubmit} className="space-y-4">
         <div className="space-y-1.5">
           <Label htmlFor="email">Email</Label>
           <Input
             id="email"
             type="email"
             required
+            autoComplete="email"
+            placeholder="you@example.com"
             value={email}
             onChange={(event) => setEmail(event.target.value)}
           />
@@ -69,21 +66,30 @@ export function SignupPage() {
             type="password"
             required
             minLength={8}
+            autoComplete="new-password"
+            placeholder="At least 8 characters"
             value={password}
             onChange={(event) => setPassword(event.target.value)}
           />
         </div>
-        {error ? <p className="text-sm text-destructive">{error}</p> : null}
-        <Button type="submit" className="w-full" disabled={pending}>
-          {pending ? 'Creating…' : 'Sign up'}
+        {error ? (
+          <p className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+            {error}
+          </p>
+        ) : null}
+        <Button type="submit" className="w-full" size="lg" disabled={pending}>
+          {pending ? 'Creating account…' : 'Create account'}
         </Button>
         <p className="text-center text-sm text-muted-foreground">
           Already have an account?{' '}
-          <Link className="text-foreground underline" to="/login">
-            Log in
+          <Link
+            className="font-medium text-primary underline-offset-4 hover:underline"
+            to="/login"
+          >
+            Sign in
           </Link>
         </p>
       </form>
-    </div>
+    </AuthLayout>
   )
 }

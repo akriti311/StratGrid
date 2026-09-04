@@ -59,9 +59,12 @@ export function TriggerSheet({
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetTrigger asChild>
-        <Button>Add trigger</Button>
+        <Button className="gap-1.5" size="sm">
+          <TrendingDown className="size-3.5" />
+          Add trigger
+        </Button>
       </SheetTrigger>
-      <SheetContent side="right" className="sm:max-w-md">
+      <SheetContent side="right" className="border-border/80 bg-popover sm:max-w-md">
         <SheetHeader>
           <SheetTitle>Add a trigger</SheetTitle>
           <SheetDescription>
@@ -76,14 +79,14 @@ export function TriggerSheet({
               <button
                 key={option.kind}
                 type="button"
-                className="flex items-start gap-3 rounded-lg border border-border bg-card p-3 text-left transition-colors hover:bg-muted"
+                className="flex items-start gap-3 rounded-xl border border-border/80 bg-card p-3 text-left transition-all hover:border-sky-500/40 hover:bg-sky-500/5"
                 onClick={() => {
                   onSelect(option.kind, option.metadata)
                   onOpenChange?.(false)
                 }}
               >
-                <span className="mt-0.5 rounded-md border border-border bg-background p-2">
-                  <Icon className="size-4" />
+                <span className="mt-0.5 rounded-lg border border-sky-500/30 bg-sky-500/15 p-2">
+                  <Icon className="size-4 text-sky-300" />
                 </span>
                 <span className="flex flex-col gap-0.5">
                   <span className="text-sm font-medium text-foreground">

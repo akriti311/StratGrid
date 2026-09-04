@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react'
+import { Activity, FlaskConical, PlayCircle } from 'lucide-react'
 
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -130,18 +132,46 @@ export function ExecutionPanel({
     }
   }
 
+  const priceBelowThreshold = price < 150
+
   return (
-    <div className="rounded-lg border border-border bg-card/95 px-3 py-2 text-sm shadow-sm">
-      <p className="font-medium text-foreground">Paper engine</p>
-      <p className="mt-0.5 text-xs text-muted-foreground">
-        Simulated orders only. No live trades.
+    <div className="glass-panel rounded-xl p-4">
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <span className="flex size-8 items-center justify-center rounded-lg bg-primary/15">
+            <FlaskConical className="size-4 text-primary" />
+          </span>
+          <div>
+            <p className="text-sm font-semibold text-foreground">Paper engine</p>
+            <p className="text-xs text-muted-foreground">Simulated orders only</p>
+          </div>
+        </div>
+        <Badge variant={enabled ? 'success' : 'secondary'}>
+          {enabled ? 'Poller on' : 'Poller off'}
+        </Badge>
+      </div>
+
+      <p className="mt-3 text-xs leading-relaxed text-muted-foreground">
         {enabled
-          ? ` Poller checks every ${formatDuration(intervalMs)}; price triggers wait ${formatDuration(cooldownMs)} between automatic runs.`
-          : ' Enable the workflow (Running) to let the background poller fire it.'}
+          ? `Checks every ${formatDuration(intervalMs)}. Price triggers cooldown ${formatDuration(cooldownMs)} between fires.`
+          : 'Enable Running on the toolbar to let the background poller evaluate this workflow.'}
       </p>
 
-      <div className="mt-3 space-y-1.5">
-        <Label htmlFor="demo-sol-price">Demo SOL price</Label>
+      <div className="mt-4 rounded-xl border border-border/80 bg-background/50 p-3">
+        <div className="mb-2 flex items-center justify-between">
+          <Label htmlFor="demo-sol-price" className="text-xs">
+            Demo SOL price
+          </Label>
+          <span
+            className={
+              priceBelowThreshold
+                ? 'text-xs font-medium text-emerald-400'
+                : 'text-xs font-medium text-muted-foreground'
+            }
+          >
+            ${price.toFixed(1)}
+          </span>
+        </div>
         <Input
           id="demo-sol-price"
           type="number"
@@ -155,6 +185,7 @@ export function ExecutionPanel({
               void persistPrice(price)
             }
           }}
+          className="mb-2 h-9"
         />
         <input
           type="range"
@@ -172,55 +203,88 @@ export function ExecutionPanel({
             }
           }}
         />
+        <p className="mt-1.5 text-[10px] text-muted-foreground">
+          {priceBelowThreshold
+            ? 'Below $150 — SOL dip template would match'
+            : 'Above $150 — dip trigger would not match'}
+        </p>
       </div>
 
       <Button
-        className="mt-3 w-full"
+        className="mt-3 w-full gap-1.5"
         onClick={() => void handleTestRun()}
         disabled={!canRun || running}
       >
-        {running ? 'Running…' : 'Test run'}
+        <PlayCircle className="size-4" />
+        {running ? 'Running…' : 'Test run now'}
       </Button>
       {!canRun ? (
-        <p className="mt-1 text-xs text-muted-foreground">Fix the graph, then test run.</p>
+        <p className="mt-1.5 text-center text-xs text-muted-foreground">
+          Fix the graph validation errors first.
+        </p>
       ) : null}
 
       {error || loadError ? (
         <p className="mt-2 text-xs text-destructive">{error ?? loadError}</p>
       ) : null}
 
-      <div className="mt-3 max-h-52 space-y-2 overflow-y-auto">
-        {executions.length === 0 ? (
-          <p className="text-xs text-muted-foreground">
-            No runs yet. Test run evaluates now. Enable the workflow so the poller can fire while SOL stays below 150.
-          </p>
-        ) : (
-          executions.map((execution) => (
-            <article
-              key={execution.id}
-              className="rounded-md border border-border bg-background/80 px-2 py-1.5"
-            >
-              <p className="text-[10px] tracking-wide text-muted-foreground uppercase">
-                {execution.source === 'test-run' ? 'Test run' : 'Poller'} ·{' '}
-                {statusLabel(execution.status)} ·{' '}
-                {new Date(execution.createdAt).toLocaleString()}
-              </p>
-              <p className="mt-0.5 text-xs text-foreground">
-                {execution.triggerSnapshot.reason}
-              </p>
-              {execution.actions.length > 0 ? (
-                <ul className="mt-1 list-disc space-y-0.5 pl-4 text-xs text-muted-foreground">
-                  {execution.actions.map((action) => (
-                    <li key={`${execution.id}-${action.nodeId}`}>{action.message}</li>
-                  ))}
-                </ul>
-              ) : null}
-            </article>
-          ))
-        )}
+      <div className="mt-4">
+        <div className="mb-2 flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+          <Activity className="size-3.5" />
+          Run history
+        </div>
+        <div className="max-h-56 space-y-2 overflow-y-auto pr-1">
+          {executions.length === 0 ? (
+            <p className="rounded-lg border border-dashed border-border px-3 py-4 text-center text-xs text-muted-foreground">
+              No runs yet. Test run evaluates immediately.
+            </p>
+          ) : (
+            executions.map((execution) => (
+              <article
+                key={execution.id}
+                className="rounded-lg border border-border/80 bg-background/60 px-3 py-2"
+              >
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <Badge variant="outline" className="normal-case">
+                    {execution.source === 'test-run' ? 'Test' : 'Poller'}
+                  </Badge>
+                  <StatusBadge status={execution.status} />
+                  <span className="text-[10px] text-muted-foreground">
+                    {new Date(execution.createdAt).toLocaleString()}
+                  </span>
+                </div>
+                <p className="mt-1.5 text-xs leading-relaxed text-foreground">
+                  {execution.triggerSnapshot.reason}
+                </p>
+                {execution.actions.length > 0 ? (
+                  <ul className="mt-1.5 space-y-0.5 border-t border-border/60 pt-1.5">
+                    {execution.actions.map((action) => (
+                      <li
+                        key={`${execution.id}-${action.nodeId}`}
+                        className="text-[11px] text-muted-foreground"
+                      >
+                        → {action.message}
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
+              </article>
+            ))
+          )}
+        </div>
       </div>
     </div>
   )
+}
+
+function StatusBadge({ status }: { status: ExecutionRecord['status'] }) {
+  if (status === 'matched') {
+    return <Badge variant="success">Matched</Badge>
+  }
+  if (status === 'no_match') {
+    return <Badge variant="secondary">No match</Badge>
+  }
+  return <Badge variant="destructive">Error</Badge>
 }
 
 function formatDuration(ms: number): string {
@@ -232,14 +296,4 @@ function formatDuration(ms: number): string {
     return `${ms / 1000}s`
   }
   return `${ms}ms`
-}
-
-function statusLabel(status: ExecutionRecord['status']): string {
-  if (status === 'matched') {
-    return 'Matched'
-  }
-  if (status === 'no_match') {
-    return 'No match'
-  }
-  return 'Error'
 }

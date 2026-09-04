@@ -6,6 +6,7 @@ import {
   applyEdgeChanges,
   addEdge,
   Background,
+  BackgroundVariant,
   Controls,
   MiniMap,
   type Edge,
@@ -14,13 +15,23 @@ import {
   type Connection,
   type Node,
 } from '@xyflow/react'
+import {
+  ArrowLeft,
+  CheckCircle2,
+  Circle,
+  LogOut,
+  Save,
+  Sparkles,
+} from 'lucide-react'
 import '@xyflow/react/dist/style.css'
 
 import { ActionSheet } from '@/components/ActionSheet'
+import { BrandLogo } from '@/components/BrandLogo'
 import { ExecutionPanel } from '@/components/ExecutionPanel'
 import { NodeConfigSheet } from '@/components/NodeConfigSheet'
 import { TriggerSheet } from '@/components/TriggerSheet'
 import { workflowNodeTypes } from '@/components/nodes/nodeTypes'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { useAuth } from '@/auth/AuthContext'
@@ -51,6 +62,11 @@ export type {
   WorkflowNode,
 } from '@/types/workflow'
 
+const defaultEdgeOptions = {
+  style: { strokeWidth: 2 },
+  animated: true,
+}
+
 function CreateWorkflow() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
@@ -76,6 +92,8 @@ function CreateWorkflow() {
     [nodes, edges],
   )
 
+  const graphReady = validationErrors.length === 0
+
   const onNodesChange = useCallback((changes: NodeChange<WorkflowNode>[]) => {
     setNodes((nodesSnapshot) => applyNodeChanges(changes, nodesSnapshot))
   }, [])
@@ -99,7 +117,10 @@ function CreateWorkflow() {
         if (exists) {
           return edgesSnapshot
         }
-        return addEdge(connection, edgesSnapshot)
+        return addEdge(
+          { ...connection, animated: true, style: { strokeWidth: 2 } },
+          edgesSnapshot,
+        )
       })
     },
     [nodes],
@@ -107,7 +128,7 @@ function CreateWorkflow() {
 
   const handleSelectTrigger = useCallback(
     (kind: WorkflowNodeKind, metadata: TriggerMetadata) => {
-      const id = `trigger-${kind}-${crypto.randomUUID()}`
+      const nodeId = `trigger-${kind}-${crypto.randomUUID()}`
       const label = labelForTrigger(kind, metadata)
 
       setNodes((current) => {
@@ -116,11 +137,11 @@ function CreateWorkflow() {
         ).length
 
         const newNode: WorkflowNode = {
-          id,
+          id: nodeId,
           type: 'trigger',
           position: {
             x: 80,
-            y: 80 + triggerCount * 100,
+            y: 80 + triggerCount * 120,
           },
           data: {
             type: 'trigger',
@@ -139,7 +160,7 @@ function CreateWorkflow() {
 
   const handleSelectAction = useCallback(
     (kind: ActionKind, metadata: ActionMetadata) => {
-      const id = `action-${kind}-${crypto.randomUUID()}`
+      const nodeId = `action-${kind}-${crypto.randomUUID()}`
       const label = labelForAction(kind, metadata)
 
       setNodes((current) => {
@@ -148,11 +169,11 @@ function CreateWorkflow() {
         ).length
 
         const newNode: WorkflowNode = {
-          id,
+          id: nodeId,
           type: 'action',
           position: {
-            x: 420,
-            y: 80 + actionCount * 100,
+            x: 440,
+            y: 80 + actionCount * 120,
           },
           data: {
             type: 'action',
@@ -283,7 +304,7 @@ function CreateWorkflow() {
 
   if (loadError) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center gap-3 px-4">
+      <div className="app-grid-bg flex min-h-screen flex-col items-center justify-center gap-4 px-4">
         <p className="text-sm text-destructive">{loadError}</p>
         <Button variant="outline" onClick={() => navigate('/')}>
           Back to workflows
@@ -293,112 +314,174 @@ function CreateWorkflow() {
   }
 
   return (
-    <div className="relative h-screen w-screen">
-      <div className="absolute top-4 right-4 z-10 flex items-center gap-2">
-        <Input
-          className="h-8 w-44"
-          value={name}
-          maxLength={80}
-          onChange={(event) => setName(event.target.value)}
-          aria-label="Workflow name"
-        />
-        <Button
-          variant={enabled ? 'default' : 'outline'}
-          onClick={() => {
-            if (!id) {
-              return
-            }
-            const next = !enabled
-            if (next) {
-              void (async () => {
-                const saved = await handleSave()
-                if (!saved) {
+    <div className="relative h-screen w-screen overflow-hidden bg-background">
+      {/* Top toolbar */}
+      <header className="absolute top-0 right-0 left-0 z-20 border-b border-border/60 bg-background/80 backdrop-blur-xl">
+        <div className="flex items-center gap-3 px-4 py-2.5">
+          <Button variant="ghost" size="sm" asChild className="shrink-0">
+            <Link to="/">
+              <ArrowLeft className="size-4" />
+              <span className="hidden sm:inline">Workflows</span>
+            </Link>
+          </Button>
+
+          <div className="hidden sm:block">
+            <BrandLogo linkTo="/" />
+          </div>
+
+          <div className="mx-2 hidden h-6 w-px bg-border sm:block" />
+
+          <Input
+            className="h-9 max-w-[200px] border-border/80 bg-card/80"
+            value={name}
+            maxLength={80}
+            onChange={(event) => setName(event.target.value)}
+            aria-label="Workflow name"
+          />
+
+          <Badge variant={graphReady ? 'success' : 'warning'} className="hidden md:inline-flex">
+            {graphReady ? (
+              <>
+                <CheckCircle2 className="size-3" />
+                Ready
+              </>
+            ) : (
+              <>
+                <Circle className="size-3" />
+                Incomplete
+              </>
+            )}
+          </Badge>
+
+          <div className="ml-auto flex flex-wrap items-center justify-end gap-2">
+            <Button variant="outline" size="sm" onClick={handleLoadTemplate} className="gap-1">
+              <Sparkles className="size-3.5" />
+              <span className="hidden lg:inline">SOL dip</span>
+            </Button>
+
+            <TriggerSheet
+              open={triggerSheetOpen}
+              onOpenChange={(open) => {
+                setTriggerSheetOpen(open)
+                if (open) {
+                  setSelectedNodeId(null)
+                }
+              }}
+              onSelect={handleSelectTrigger}
+            />
+            <ActionSheet
+              open={actionSheetOpen}
+              onOpenChange={(open) => {
+                setActionSheetOpen(open)
+                if (open) {
+                  setSelectedNodeId(null)
+                }
+              }}
+              onSelect={handleSelectAction}
+            />
+
+            <Button
+              variant={enabled ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => {
+                if (!id) {
                   return
                 }
-                setEnabled(true)
-                try {
-                  await setWorkflowEnabled(id, true)
-                } catch (err) {
-                  setEnabled(false)
-                  setSaveError(
-                    err instanceof Error ? err.message : 'Could not update enabled',
-                  )
+                const next = !enabled
+                if (next) {
+                  void (async () => {
+                    const saved = await handleSave()
+                    if (!saved) {
+                      return
+                    }
+                    setEnabled(true)
+                    try {
+                      await setWorkflowEnabled(id, true)
+                    } catch (err) {
+                      setEnabled(false)
+                      setSaveError(
+                        err instanceof Error ? err.message : 'Could not update enabled',
+                      )
+                    }
+                  })()
+                  return
                 }
-              })()
-              return
-            }
-            setEnabled(false)
-            void setWorkflowEnabled(id, false).catch((err: unknown) => {
-              setEnabled(true)
-              setSaveError(err instanceof Error ? err.message : 'Could not update enabled')
-            })
-          }}
-        >
-          {enabled ? 'Running' : 'Paused'}
-        </Button>
-        <Button onClick={handleSave} disabled={saveState === 'saving'}>
-          {saveState === 'saving' ? 'Saving…' : saveState === 'saved' ? 'Saved' : 'Save'}
-        </Button>
-        <p className="hidden max-w-40 truncate text-xs text-muted-foreground sm:block">
-          {user?.email}
-        </p>
-        <Button variant="ghost" onClick={logout}>
-          Log out
-        </Button>
-        <Button variant="outline" onClick={handleLoadTemplate}>
-          SOL dip template
-        </Button>
-        <TriggerSheet
-          open={triggerSheetOpen}
-          onOpenChange={(open) => {
-            setTriggerSheetOpen(open)
-            if (open) {
-              setSelectedNodeId(null)
-            }
-          }}
-          onSelect={handleSelectTrigger}
-        />
-        <ActionSheet
-          open={actionSheetOpen}
-          onOpenChange={(open) => {
-            setActionSheetOpen(open)
-            if (open) {
-              setSelectedNodeId(null)
-            }
-          }}
-          onSelect={handleSelectAction}
-        />
-      </div>
+                setEnabled(false)
+                void setWorkflowEnabled(id, false).catch((err: unknown) => {
+                  setEnabled(true)
+                  setSaveError(err instanceof Error ? err.message : 'Could not update enabled')
+                })
+              }}
+            >
+              {enabled ? '● Running' : 'Paused'}
+            </Button>
 
-      <div className="absolute top-4 left-4 z-10 max-h-[calc(100vh-2rem)] w-72 max-w-xs space-y-2 overflow-y-auto">
-        <Button variant="ghost" size="sm" asChild>
-          <Link to="/">← Workflows</Link>
-        </Button>
-        <Button variant="ghost" size="sm" asChild>
-          <Link to="/credentials">Credentials</Link>
-        </Button>
-        <div className="rounded-lg border border-border bg-card/95 px-3 py-2 text-sm shadow-sm">
-          {saveError ? (
-            <p className="text-destructive">{saveError}</p>
-          ) : validationErrors.length === 0 ? (
-            <p className="text-foreground">Graph is ready (trigger + action + edge)</p>
-          ) : (
-            <ul className="list-disc space-y-1 pl-4 text-muted-foreground">
-              {validationErrors.map((error) => (
-                <li key={error}>{error}</li>
-              ))}
-            </ul>
-          )}
+            <Button
+              size="sm"
+              onClick={handleSave}
+              disabled={saveState === 'saving'}
+              className="gap-1"
+            >
+              <Save className="size-3.5" />
+              {saveState === 'saving' ? 'Saving…' : saveState === 'saved' ? 'Saved' : 'Save'}
+            </Button>
+
+            <span className="hidden max-w-[120px] truncate text-xs text-muted-foreground xl:inline">
+              {user?.email}
+            </span>
+            <Button variant="ghost" size="sm" onClick={logout}>
+              <LogOut className="size-3.5" />
+            </Button>
+          </div>
         </div>
-        {id ? (
-          <ExecutionPanel
-            workflowId={id}
-            enabled={enabled}
-            canRun={validationErrors.length === 0}
-            saveGraph={handleSave}
-          />
-        ) : null}
-      </div>
+      </header>
+
+      {/* Left sidebar */}
+      <aside className="absolute top-[53px] bottom-0 left-0 z-10 w-80 overflow-y-auto border-r border-border/60 bg-background/60 p-4 backdrop-blur-sm">
+        <div className="space-y-3">
+          <div className="glass-panel rounded-xl p-3">
+            <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+              Validation
+            </p>
+            {saveError ? (
+              <p className="mt-2 text-sm text-destructive">{saveError}</p>
+            ) : graphReady ? (
+              <p className="mt-2 flex items-center gap-1.5 text-sm text-emerald-400">
+                <CheckCircle2 className="size-4 shrink-0" />
+                Graph is ready to run
+              </p>
+            ) : (
+              <ul className="mt-2 space-y-1">
+                {validationErrors.map((validationError) => (
+                  <li
+                    key={validationError}
+                    className="text-xs leading-relaxed text-muted-foreground"
+                  >
+                    · {validationError}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+
+          {id ? (
+            <ExecutionPanel
+              workflowId={id}
+              enabled={enabled}
+              canRun={graphReady}
+              saveGraph={handleSave}
+            />
+          ) : null}
+
+          <div className="rounded-xl border border-dashed border-border/80 px-3 py-3 text-xs leading-relaxed text-muted-foreground">
+            <p className="font-medium text-foreground">How to connect</p>
+            <p className="mt-1">
+              Drag from a trigger&apos;s right handle to an action&apos;s left handle.
+              Click a node to edit its settings.
+            </p>
+          </div>
+        </div>
+      </aside>
 
       <NodeConfigSheet
         node={selectedNode}
@@ -410,21 +493,38 @@ function CreateWorkflow() {
         onUpdate={handleUpdateNode}
       />
 
-      <ReactFlow
-        nodes={nodes}
-        edges={edges}
-        nodeTypes={workflowNodeTypes}
-        onNodesChange={onNodesChange}
-        onEdgesChange={onEdgesChange}
-        onConnect={onConnect}
-        onNodeClick={handleNodeClick}
-        onPaneClick={handlePaneClick}
-        fitView
-      >
-        <Background />
-        <Controls />
-        <MiniMap />
-      </ReactFlow>
+      {/* Canvas */}
+      <div className="absolute top-[53px] right-0 bottom-0 left-80">
+        <ReactFlow
+          nodes={nodes}
+          edges={edges}
+          nodeTypes={workflowNodeTypes}
+          defaultEdgeOptions={defaultEdgeOptions}
+          onNodesChange={onNodesChange}
+          onEdgesChange={onEdgesChange}
+          onConnect={onConnect}
+          onNodeClick={handleNodeClick}
+          onPaneClick={handlePaneClick}
+          fitView
+          className="bg-[oklch(0.11_0.02_260)]"
+        >
+          <Background
+            variant={BackgroundVariant.Dots}
+            gap={20}
+            size={1}
+            color="oklch(0.35 0.03 260)"
+          />
+          <Controls position="bottom-right" />
+          <MiniMap
+            position="bottom-left"
+            className="!bottom-4 !left-4"
+            nodeColor={(node) =>
+              node.type === 'trigger' ? 'oklch(0.6 0.12 220)' : 'oklch(0.7 0.14 85)'
+            }
+            maskColor="oklch(0.13 0.02 260 / 80%)"
+          />
+        </ReactFlow>
+      </div>
     </div>
   )
 }
